@@ -1,0 +1,216 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>사이언스 러너</title><style>*{box-sizing:border-box}body{margin:0;background:#151b30;color:#f5f4e9;font-family:system-ui,sans-serif}header{display:flex;justify-content:space-between;align-items:center;padding:10px 18px;background:#222d49;gap:10px;flex-wrap:wrap}button,input,select{font:inherit;border:0;border-radius:8px;padding:9px 12px}button{background:#ffd05a;color:#29233a;font-weight:800;cursor:pointer}button:disabled{opacity:.4}input{max-width:160px}#hud{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}main{max-width:1120px;margin:auto;padding:12px}#stage{position:relative;background:#141a2a;border:4px solid #455474;border-radius:10px;overflow:hidden}canvas{display:block;width:100%;height:auto;image-rendering:pixelated}#question{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:min(610px,77%);max-height:245px;overflow:auto;padding:7px 10px;background:#111c32ed;border:2px solid #e5c875;border-radius:8px;text-align:center;font-size:14px;display:none;pointer-events:none}#answers{font-size:12px;color:#ffdd7e;margin-top:5px;display:grid;grid-template-columns:1fr 1fr;gap:3px 9px;text-align:left}#answers span{background:#273b55;border-radius:4px;padding:3px 5px}#qdiagram{height:83px;display:none;margin:4px auto;max-width:340px}#qdiagram svg{width:100%;height:100%;display:block}#qdiagram text{font-family:sans-serif}#overlay{position:absolute;inset:0;background:#101827dc;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px}#panel{max-width:610px;width:100%;background:#273653;border:3px solid #9daac0;padding:22px;border-radius:12px}#panel h1{margin:0 0 12px;color:#ffe187}#controls{display:flex;flex-wrap:wrap;gap:8px;padding:10px 0}#controls button{font-size:13px}.muted{color:#c7d1e0;font-size:13px}.key{background:#415575;padding:2px 6px;border-radius:4px}table{width:100%;border-collapse:collapse;font-size:13px;margin:12px 0}td,th{padding:7px;border-bottom:1px solid #64728c}#touch{display:flex;justify-content:space-between;align-items:center;margin-top:10px}#touch button{min-width:54px;touch-action:none}#toast{position:absolute;bottom:20%;width:100%;text-align:center;font-size:25px;font-weight:900;text-shadow:2px 3px #172035;pointer-events:none}#teacherControls{display:none}</style></head><body><header><b>🌞 사이언스 러너 · 계절의 변화</b><div id="hud"><span id="status">대기실</span><span id="timer">00:00</span><span id="speed">속도 1.0</span><span id="score">정답 0 · 오답 0</span></div></header><main><div id="controls"><span id="teacherControls"><button onclick="startRace()">▶ 레이스 시작</button> <button onclick="togglePause()">⏸ 일시정지/계속</button> <button onclick="endRace()">■ 레이스 종료</button> <button onclick="restart()">↻ 레이스 재시작</button> <button onclick="clearRoom()">방 비우기</button> <button onclick="teacherResults()">🏆 결과창</button></span><button id="musicBtn" onclick="toggleMusic()">♫ 음악 켜기</button></div><div id="stage"><canvas id="game" width="960" height="600"></canvas><div id="question"><b id="qtext"></b><div id="qdiagram"></div><div id="answers"></div><div id="qtime"></div></div><div id="toast"></div><div id="overlay"><div id="panel"><h1>🌞 사이언스 러너</h1><p>초등 6학년 과학 · 계절의 변화</p><p><input id="name" placeholder="이름" maxlength="12" value="학생1"> <input id="roomCode" placeholder="방 코드 (학생 필수)" maxlength="6" inputmode="numeric"> <select id="role"><option value="student">학생으로 입장</option><option value="teacher">교사(방장)로 입장</option></select></p><button onclick="enterRoom()">게임 입장</button><p class="muted">학생: ↑/W 전진 · ↓/S 후진 · ←/A 왼쪽 · →/D 오른쪽 · 스페이스 점프<br>교사: 전체 트랙 조감도와 운영 메뉴<br>교사는 방을 생성하고, 학생은 6자리 방 코드로 접속합니다.</p></div></div></div><div id="touch"><div><button data-key="ArrowLeft">◀</button> <button data-key="ArrowUp">▲</button> <button data-key="ArrowDown">▼</button> <button data-key="ArrowRight">▶</button></div><button data-key="Space">점프</button></div><p class="muted">실시간 멀티플레이: 같은 방 코드로 최대 40명이 참여할 수 있습니다. 교사는 관전할 수 있으며 학생은 직접 조작합니다. 첨부 평가의 20문항을 4지선다로 재구성했습니다. 그림은 원본 이미지가 아닌 설명용 재구성 그림입니다.</p></main><script>
+const QUESTIONS=[{"q":"태양이 지표면과 이루는 각을 무엇이라고 하나요?","a":["태양 고도","남중 시각","지구 자전각","태양의 크기"],"correct":0,"diagram":""},{"q":"그림에서 태양 고도가 더 높은 것은?","a":["㉠","㉡","둘 다 같다","알 수 없다"],"correct":1,"diagram":"altitude"},{"q":"태양 빛을 이용하여 태양 고도를 측정하는 기구는?","a":["①과 ③","②와 ④","①과 ⑤","③과 ⑤"],"correct":1,"diagram":"tools"},{"q":"태양 고도 측정 방법에 대해 바르지 않게 말한 학생은?","a":["(가)","(나)","(다)","모두 바르다"],"correct":1,"diagram":"stick"},{"q":"태양의 남중 고도에 관한 설명으로 옳지 않은 것은?","a":["남중했을 때의 고도","정남쪽에 있을 때의 고도","그림자가 가장 짧을 때의 고도","기온이 가장 높을 때의 태양 고도"],"correct":3,"diagram":""},{"q":"그래프의 ㉠, ㉡, ㉢에 해당하는 것은?","a":["기온 / 태양 고도 / 그림자","기온 / 그림자 / 태양 고도","태양 고도 / 기온 / 그림자","태양 고도 / 그림자 / 기온"],"correct":2,"diagram":"daily"},{"q":"하루 동안의 변화에 관한 설명으로 옳은 것은?","a":["남중할 때 기온도 최고이다","태양 고도와 그림자 그래프는 비슷하다","그림자는 정오 무렵 가장 길다","태양 고도는 오전에 높아지고 오후에 낮아진다"],"correct":3,"diagram":"daily"},{"q":"하루 동안의 태양 고도·그림자·기온 관계로 옳은 두 가지는?","a":["①과 ④","①과 ⑤","②와 ④","③과 ⑤"],"correct":0,"diagram":"daily"},{"q":"계절별 태양 남중 고도와 낮 길이 그래프의 설명으로 옳은 것은?","a":["6월에 낮이 가장 짧다","12월에 낮이 가장 길다","8월에 남중 고도가 가장 높다","계절에 따라 남중 고도와 낮 길이가 달라진다"],"correct":3,"diagram":"season"},{"q":"그림 중 낮의 길이가 가장 긴 태양 경로는?","a":["㉠","㉡","㉢","모두 같다"],"correct":2,"diagram":"paths"},{"q":"계절별 남중 고도와 낮 길이의 관계로 옳은 것은?","a":["남중 고도가 높으면 낮이 짧다","남중 고도가 낮으면 낮이 길다","여름에는 남중 고도가 높고 낮이 길다","겨울에는 남중 고도가 높다"],"correct":2,"diagram":"season"},{"q":"9월에서 한 달 뒤인 10월의 변화를 바르게 말한 학생은?","a":["(가) 변화가 없다","(나) 남중 고도와 낮 길이가 모두 감소","(다) 남중 고도와 낮 길이가 모두 증가","모두 틀리다"],"correct":1,"diagram":"season"},{"q":"전등과 모래 실험에서 다르게 해야 할 조건은?","a":["모래의 양","모래의 종류","전등을 켜는 시간","전등과 모래가 이루는 각"],"correct":3,"diagram":"lamp"},{"q":"전등과 모래 실험 결과에 관한 옳은 설명은?","a":["㉠의 모래 온도 변화가 더 크다","㉡의 온도는 변하지 않는다","㉠이 더 넓은 면적을 비춘다","각이 작을수록 온도가 더 많이 오른다"],"correct":0,"diagram":"lamp"},{"q":"남중 고도가 높아지면 에너지양과 기온은 어떻게 될까요?","a":["에너지 많아짐 / 기온 높아짐","에너지 적어짐 / 기온 낮아짐","에너지 적어짐 / 기온 높아짐","에너지 많아짐 / 기온 낮아짐"],"correct":0,"diagram":"energy"},{"q":"태양 남중 고도와 계절별 기온에 관한 옳은 설명은?","a":["여름은 남중 고도가 낮고 덥다","겨울은 남중 고도가 높고 춥다","여름은 남중 고도가 높고 덥다","겨울은 태양 에너지가 많고 춥다"],"correct":2,"diagram":"season"},{"q":"공전 위치가 달라도 그림자 길이가 일정한 모형은?","a":["㉠ 자전축 수직","㉡ 자전축 기울어짐","둘 다 같다","둘 다 아니다"],"correct":0,"diagram":"earth"},{"q":"자전축과 남중 고도 변화에 관한 옳은 두 설명은?","a":["①과 ③","②와 ④","②와 ⑤","③과 ⑤"],"correct":1,"diagram":"earth"},{"q":"계절이 변하는 까닭으로 옳은 것은?","a":["지구가 공전하지 않기 때문","자전축이 수직인 채 자전하기 때문","자전축이 수직인 채 공전하기 때문","자전축이 기울어진 채 태양 주위를 공전하기 때문"],"correct":3,"diagram":"earth"},{"q":"북반구가 겨울일 때 옳지 않은 설명은?","a":["남반구도 겨울이다","우리나라는 기온이 낮다","남반구의 남중 고도는 높다","우리나라의 남중 고도는 낮다"],"correct":0,"diagram":"earth"}];
+const canvas=document.getElementById('game'),ctx=canvas.getContext('2d');ctx.imageSmoothingEnabled=false;const $=id=>document.getElementById(id);const keys={};let role='student',phase='menu',elapsed=0,lobby=30,questionIndex=0,questionStart=0,questionMode='none',answerResolved=false,paused=false,last=0,music=false,audio=null,musicTick=0,resultsShown=false;const FINISH=2100,LANES=4,TRACK=480;let runners=[];let player;let tileGrid=[];const TILE_LENGTH=10;const CHOICE_COLORS={1:'#e85d64',2:'#478fe3',3:'#e7b53f',4:'#49ad78'};function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}function generateTiles(){tileGrid=Array.from({length:Math.ceil(FINISH/TILE_LENGTH)+2},()=>shuffle([1,2,3,4]))}function tileNumber(r){const row=Math.min(tileGrid.length-1,Math.max(0,Math.floor(r.x/TILE_LENGTH)));return tileGrid[row][Math.max(0,Math.min(3,Math.floor(r.lane)))]} 
+function makeRunners(){runners=[{name:$('name').value.trim()||'학생1',x:0,lane:1,correct:0,wrong:0,boost:1,finish:null,color:'#ffcb68',human:role==='student',jump:0,fall:0,respawnX:0,respawnLane:0,cheer:false,stun:0,fallOrigin:0,teleportFlash:0,judged:false},...['민지','준호','서연','지우','하린'].map((name,i)=>({name,x:0,lane:i%4,correct:0,wrong:0,boost:1,finish:null,color:['#f780a4','#78d8ee','#a4ee8a','#c5a3ff','#f2a06c'][i],human:false,jump:0,fall:0,respawnX:0,respawnLane:0,cheer:false,stun:0,fallOrigin:0,teleportFlash:0,judged:false}))];player=runners[0]}
+function enterRoom(){connectMultiplayer()}
+function startRace(){if(online){sendCommand('start');return}if(phase==='menu')return;makeRunners();phase='countdown';elapsed=0;questionIndex=0;questionMode='none';questionStart=0;answerResolved=false;resultsShown=false;paused=false;$('overlay').style.display='none';$('question').style.display='none';toast('3')}
+function restart(){if(online){sendCommand('restart');return}startRace()}function clearRoom(){if(online){sendCommand('clear');return}phase='menu';$('overlay').style.display='flex';$('panel').innerHTML='<h1>방이 비워졌습니다</h1><button onclick="location.reload()">처음으로</button>';runners=[]}function endRace(){if(online){sendCommand('end');return}if(phase==='menu')return;phase='ended';showResults()}
+function togglePause(){if(online){sendCommand('pause');return}if(phase==='race'||phase==='countdown'){paused=!paused;toast(paused?'일시정지':'계속 진행')}}
+function toast(s){$('toast').textContent=s;clearTimeout(toast.t);toast.t=setTimeout(()=>{if($('toast').textContent===s)$('toast').textContent=''},1500)}
+function showResults(){resultsShown=true;const ordered=[...runners].sort((a,b)=>(a.finish===null?Infinity:a.finish)-(b.finish===null?Infinity:b.finish)||b.x-a.x);$('panel').innerHTML='<h1>🏆 레이스 결과</h1><div style="max-height:300px;overflow:auto"><table><tr><th>순위</th><th>이름</th><th>기록</th><th>정답</th><th>오답</th></tr>'+ordered.map((r,i)=>`<tr><td>${i+1}</td><td>${escapeHtml(r.name)}</td><td>${r.finish===null?'진행 중':r.finish.toFixed(1)+'초'}</td><td>${r.correct}</td><td>${r.wrong}</td></tr>`).join('')+'</table></div><button onclick="backLobby()">대기실로</button> <button onclick="leaveGame()">게임 나가기</button> <button onclick="hideResults()">결과 닫기</button>';$('overlay').style.display='flex'}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}function hideResults(){$('overlay').style.display='none';resultsShown=false}function backLobby(){if(online){location.reload();return}enterRoom()}function leaveGame(){location.reload()}
+function drawQuestionDiagram(kind){
+const el=$('qdiagram');if(!kind){el.style.display='none';el.innerHTML='';return}el.style.display='block';
+const base='<rect width="340" height="85" rx="5" fill="#e9f2f6"/><path d="M8 70H332" stroke="#758b75" stroke-width="3"/>';
+const sun=(x,y)=>`<circle cx="${x}" cy="${y}" r="9" fill="#f7b733" stroke="#dd8d18" stroke-width="2"/>`;
+const ray=(x,y,xx,yy)=>`<path d="M${x} ${y}L${xx} ${yy}" stroke="#e8ad30" stroke-width="2" stroke-dasharray="4 3"/>`;
+const txt=(x,y,t)=>`<text x="${x}" y="${y}" fill="#273d57" font-size="12" font-weight="bold" text-anchor="middle">${t}</text>`;
+let g='';
+if(kind==='altitude'){g=sun(83,44)+sun(254,14)+ray(83,44,43,70)+ray(254,14,214,70)+txt(70,82,'㉠ 낮은 고도')+txt(245,82,'㉡ 높은 고도')}
+if(kind==='tools'){for(let i=0;i<5;i++){let x=35+i*66;g+=`<rect x="${x-14}" y="44" width="28" height="20" fill="#8da8bc" stroke="#4a6376"/>`+(i===1||i===3?ray(x-14,12,x+10,48):`<path d="M${x} 20V44M${x} 44L${x+14} 66" stroke="#4a6376" stroke-width="3"/>`)+txt(x,81,String(i+1))}g+=txt(171,14,'빛 통과형과 그림자형 측정기')}
+if(kind==='stick'){g=`<path d="M90 16V69M90 69H220" stroke="#7d5636" stroke-width="5"/>`+ray(250,10,90,69)+`<path d="M125 69A35 35 0 0 0 115 45" fill="none" stroke="#df7e4c" stroke-width="2"/>`+txt(250,48,'막대기와 그림자')}
+if(kind==='daily'){g=`<path d="M26 12V69H315" fill="none" stroke="#45566c" stroke-width="2"/><path d="M28 63Q150 -20 285 62" fill="none" stroke="#dba12e" stroke-width="3"/><path d="M28 60Q200 62 251 24T311 38" fill="none" stroke="#d96161" stroke-width="3"/><path d="M28 20Q154 102 285 18" fill="none" stroke="#4288c8" stroke-width="3"/>`+txt(92,17,'㉠')+txt(270,20,'㉡')+txt(175,67,'㉢')}
+if(kind==='season'){g=`<path d="M26 10V68H318" fill="none" stroke="#45566c" stroke-width="2"/><path d="M28 57Q172 -12 313 57" fill="none" stroke="#d99e31" stroke-width="4"/><path d="M28 65Q172 13 313 65" fill="none" stroke="#468dc4" stroke-width="4"/>`+txt(30,81,'1월')+txt(173,81,'6월')+txt(309,81,'12월')}
+if(kind==='paths'){g=`<path d="M30 68Q170 -50 310 68" fill="none" stroke="#d8a02f" stroke-width="3"/><path d="M55 68Q170 2 285 68" fill="none" stroke="#e17b51" stroke-width="3"/><path d="M85 68Q170 38 255 68" fill="none" stroke="#4e95ca" stroke-width="3"/>`+txt(170,12,'㉢')+txt(170,35,'㉡')+txt(170,57,'㉠')}
+if(kind==='lamp'){g=`<rect x="50" y="58" width="90" height="11" fill="#b99061"/><rect x="205" y="58" width="90" height="11" fill="#b99061"/>`+sun(96,14)+sun(250,14)+ray(96,24,78,58)+ray(96,24,115,58)+ray(250,24,211,58)+ray(250,24,288,58)+txt(96,82,'㉠ 큰 각')+txt(250,82,'㉡ 작은 각')}
+if(kind==='energy'){g=sun(85,15)+sun(250,15)+ray(85,25,62,69)+ray(85,25,108,69)+ray(250,25,190,69)+ray(250,25,315,69)+txt(85,82,'에너지 집중')+txt(252,82,'에너지 분산')}
+if(kind==='earth'){g=`<circle cx="86" cy="42" r="27" fill="#5ca5cc" stroke="#37779c" stroke-width="2"/><circle cx="255" cy="42" r="27" fill="#5ca5cc" stroke="#37779c" stroke-width="2"/><path d="M86 5V78M234 11L276 73" stroke="#334c62" stroke-width="4"/>`+txt(86,82,'㉠ 수직')+txt(255,82,'㉡ 기울어짐')}
+el.innerHTML=`<svg viewBox="0 0 340 85" role="img" aria-label="문제 이해를 돕는 재구성 그림">${base}${g}</svg>`;
+}
+function startQuestion(){generateTiles();questionMode='choose';questionStart=elapsed;answerResolved=false;const q=QUESTIONS[questionIndex%QUESTIONS.length];$('qtext').textContent=`문제 ${questionIndex+1}. ${q.q}`;$('answers').innerHTML=q.a.map((v,i)=>`<span>${i+1} ${escapeHtml(v)}</span>`).join('');drawQuestionDiagram(q.diagram);$('question').style.display='block';toast('정답 블록으로 이동!')}
+function markWrong(r){if(r.judged||r.finish!==null||r.stun>0)return;r.judged=true;r.wrong++;r.boost=1;const originalX=r.x,destination=Math.max(0,originalX-10);const row=Math.min(tileGrid.length-1,Math.floor(destination/TILE_LENGTH));r.respawnX=destination;r.respawnLane=tileGrid[row].indexOf(QUESTIONS[questionIndex%QUESTIONS.length].correct+1);r.fall=2;r.stun=3;r.fallOrigin=originalX;r.teleportFlash=0;r.jump=0;}
+function markCorrect(r){if(r.judged||r.finish!==null)return;r.judged=true;r.correct++;r.boost=+(r.boost+.1).toFixed(1)}
+function resolveQuestion(){questionMode='reveal';questionStart=elapsed;answerResolved=true;const q=QUESTIONS[questionIndex%QUESTIONS.length];$('qtime').textContent=`정답: ${q.correct+1}번 · 착지한 블록으로 판정!`;runners.forEach(r=>{r.judged=false;if(r.finish!==null||r.stun>0)return;if(r.jump<=0){if(tileNumber(r)===q.correct+1)markCorrect(r);else markWrong(r)}});toast('정답 '+(q.correct+1)+'번! 착지 위치를 확인하세요!')}
+
+function update(dt){if(online){updateOnline(dt);return}if(phase==='lobby'){lobby-=dt;if(lobby<=0)startRace()}else if(phase==='countdown'){elapsed+=dt;if(elapsed>=3){phase='race';elapsed=0;toast('GO!')}}else if(phase==='race'&&!paused){elapsed+=dt;if(questionMode==='none'&&elapsed>=10)startQuestion();if(questionMode==='choose'&&elapsed-questionStart>=10)resolveQuestion();if(questionMode==='reveal'&&elapsed-questionStart>=3){runners.forEach(r=>{if(!r.judged&&r.finish===null&&r.stun<=0){if(tileNumber(r)===QUESTIONS[questionIndex%QUESTIONS.length].correct+1)markCorrect(r);else markWrong(r)}});questionMode='restore';questionStart=elapsed;$('question').style.display='none'}if(questionMode==='restore'&&elapsed-questionStart>=5){questionIndex++;startQuestion()}runners.forEach((r,i)=>{if(r.finish!==null)return;if(r.stun>0){const before=r.stun;r.stun=Math.max(0,r.stun-dt);r.fall=Math.max(0,r.stun-1);if(before>1&&r.stun<=1){r.x=r.respawnX;r.lane=r.respawnLane;r.teleportFlash=1.5;}if(before>0&&r.stun===0){r.jump=.65;}return;}r.teleportFlash=Math.max(0,r.teleportFlash-dt);if(r.human){const dx=(keys.ArrowUp||keys.KeyW?1:0)-(keys.ArrowDown||keys.KeyS?1:0);const dl=(keys.ArrowRight||keys.KeyD?1:0)-(keys.ArrowLeft||keys.KeyA?1:0);r.x=Math.max(0,r.x+dx*dt*8*r.boost*(r.jump>0?1.55:1));r.lane=Math.max(0,Math.min(3,r.lane+dl*dt*3.5));if((keys.Space||keys[' '])&&r.jump<=0)r.jump=.95}else{r.x+=dt*(6.5+i*.28)*r.boost;if(questionMode==='choose'){const target=tileGrid[Math.max(0,Math.min(tileGrid.length-1,Math.floor(r.x/TILE_LENGTH)))].indexOf(QUESTIONS[questionIndex%QUESTIONS.length].correct+1);if(Math.random()<dt*.8)r.lane=Math.max(0,Math.min(3,r.lane+Math.sign((i%5===0?(target+1)%4:target)-r.lane)*dt*3))}}r.jump=Math.max(0,r.jump-dt);
+// 정답 공개 순간 공중에 있던 주자는 착지한 칸에서 판정합니다.
+// 이미 정답을 받은 주자도 정답 바닥을 벗어나면 추락합니다.
+if(questionMode==='reveal'&&r.stun<=0){const safe=tileNumber(r)===QUESTIONS[questionIndex%QUESTIONS.length].correct+1;if(r.jump<=0){if(!safe)markWrong(r);else if(!r.judged)markCorrect(r)}}
+if(r.x>=FINISH){r.x=FINISH;r.finish=elapsed;r.cheer=true;toast(`${r.name} 골인!`);if(role==='teacher'&&!resultsShown)showResults();if(r.human&&!resultsShown)showResults()}});if(runners.every(r=>r.finish!==null)&&!resultsShown)showResults()}}
+function rect(x,y,w,h,c){ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),Math.ceil(w),Math.ceil(h))}function text(s,x,y,size=15,color='#fff',align='center'){ctx.fillStyle=color;ctx.font=`bold ${size}px monospace`;ctx.textAlign=align;ctx.fillText(s,x,y)}
+function drawRunner(r,sx,sy,scale=1){
+ const falling=r.stun>1, dizzy=r.stun>0&&r.stun<=1;
+ const jump=r.jump>0?Math.sin(Math.min(1,r.jump/.95)*Math.PI)*19:0;
+ const running=phase==='race'&&!paused&&!r.cheer&&r.stun<=0&&r.finish===null;
+ // 실제 이동 거리를 기준으로 다리 교차 주기를 계산하여 멈추면 발도 멈춥니다.
+ const stride=running?Math.floor(r.x*1.5)%2:0;
+ const swing=running?(stride===0?1:-1):0;
+ const bob=running?(stride===0?2:0):0;
+ const x=Math.round(sx),y=Math.round(sy-jump-bob+(falling?Math.min(1,(3-r.stun)/2)*115:0));
+ if(falling){ctx.save();ctx.globalAlpha=Math.max(.12,1-(3-r.stun)/2*.85)}
+ // 그림자와 픽셀 캐릭터
+ if(!falling&&!r.cheer)rect(x-10*scale,sy+19*scale,20*scale,3*scale,'#624a3b');
+ rect(x-8*scale,y-18*scale,16*scale,16*scale,r.color);
+ rect(x-5*scale,y-14*scale,3*scale,3*scale,'#252b39');rect(x+3*scale,y-14*scale,3*scale,3*scale,'#252b39');
+ rect(x-7*scale,y-1*scale,14*scale,12*scale,'#344f9c');
+ // 달릴 때 좌우 팔과 다리가 반대 방향으로 번갈아 움직이는 2프레임 애니메이션
+ if(running){
+  rect(x-6*scale,y+11*scale,5*scale,(swing>0?11:5)*scale,'#202439');
+  rect(x+2*scale,y+11*scale,5*scale,(swing<0?11:5)*scale,'#202439');
+  rect(x-12*scale,y+(swing>0?-4:3)*scale,5*scale,8*scale,r.color);
+  rect(x+7*scale,y+(swing<0?-4:3)*scale,5*scale,8*scale,r.color);
+ }else{
+  rect(x-6*scale,y+11*scale,5*scale,8*scale,'#202439');rect(x+2*scale,y+11*scale,5*scale,8*scale,'#202439');
+  if(r.cheer){rect(x-14*scale,y-17*scale,6*scale,11*scale,r.color);rect(x+8*scale,y-17*scale,6*scale,11*scale,r.color)}
+  else{rect(x-12*scale,y+1*scale,5*scale,7*scale,r.color);rect(x+7*scale,y+1*scale,5*scale,7*scale,r.color)}
+ }
+ if(dizzy){text('💫',x,y-34*scale,22);text('어질어질!',x,y-48*scale,12,'#ffe987')}
+ else if(r.teleportFlash>0){text('↧ 10칸 후퇴!',x,y-42*scale,14,'#ffdf75')}
+ text(r.name,x,y-25*scale,Math.max(10,11*scale),'#fff');
+ if(falling)ctx.restore();
+}
+function drawMiniMap(){
+ const x=759,y=102,w=183,h=378;
+ rect(x-7,y-42,w+14,h+82,'#1d2a40');rect(x-5,y-40,w+10,34,'#34465d');
+ text('레이스 미니맵',x+w/2,y-18,16,'#ffe39a');
+ rect(x+15,y+13,w-30,h-28,'#87603f');
+ for(let i=0;i<4;i++)rect(x+15+i*(w-30)/4,y+13,2,h-28,'#b48a62');
+ for(let k=0;k<5;k++){const yy=y+13+k*(h-28)/4;rect(x+15,yy,w-30,1,'#b48a62')}
+ for(const r of runners){const px=x+15+(Math.max(0,Math.min(3,r.lane))+.5)*(w-30)/4,py=y+13+(1-Math.min(1,r.x/FINISH))*(h-28);rect(px-4,py-4,8,8,r.human?'#ffe27b':r.color);if(r===player){ctx.strokeStyle='#fff';ctx.strokeRect(px-6,py-6,12,12)}}
+ text('GOAL',x+w/2,y+9,11,'#fff');text('START',x+w/2,y+h-1,11,'#fff');
+ rect(x-5,y+h+5,w+10,52,'#253650');
+ text('현재 속도  '+player.boost.toFixed(1)+'x',x+w/2,y+h+25,15,'#ffe39a');
+ text('내 위치  '+Math.floor(player.x)+' / '+FINISH,x+w/2,y+h+45,13,'#fff');
+}
+function draw(){
+const W=960,H=600;
+rect(0,0,W,H,'#83b4a0');
+for(let i=0;i<95;i++){let x=(i*137)%960,y=(i*83)%600;rect(x,y,8,8,i%2?'#75a88c':'#a1c5a2')}
+if(phase==='menu'){text('SCIENCE RUNNER',480,240,38,'#fff2a0');text('도트 레이싱 퀴즈',480,285,24);return}
+// 트랙은 화면 아래(출발)에서 위(결승)로 진행합니다.
+const overview=role==='teacher';
+const units=overview?FINISH+12:55;
+const camera=overview?0:Math.max(0,(player.stun>1?player.fallOrigin:player.x)-12);
+const toY=progress=>overview?510-progress/units*430:510-(progress-camera)/units*430;
+const laneX=lane=>240+lane*120+60;
+rect(220,0,520,600,'#647487');
+rect(240,0,480,600,'#95663e');
+// 흙, 돌, 바퀴자국은 트랙의 실제 거리 좌표에 고정되어 카메라 이동 시 아래로 흘러갑니다.
+const visibleStart=overview?0:Math.max(0,camera-15);
+const visibleEnd=overview?FINISH:Math.min(FINISH,camera+90);
+const textureStep=overview?75:2;
+for(let distance=Math.floor(visibleStart/textureStep)*textureStep;distance<=visibleEnd;distance+=textureStep){
+ const sy=toY(distance);if(sy<-15||sy>615)continue;
+ const seed=Math.floor(distance/textureStep);
+ for(let j=0;j<5;j++){
+  const n=(seed*137+j*79+23)>>>0;
+  const xx=247+((n*53+j*137)%464);
+  const color=['#b98b5b','#755033','#c29868','#825637','#a67549'][((seed+j)%5+5)%5];
+  rect(xx,sy+((n+j*11)%9)-4,3+(n%6),2+(j%3),color);
+ }
+ // 일정 간격의 가로 흙 이음새와 자갈 무늬가 속도감을 줍니다.
+ if(seed%5===0){rect(242,sy,476,2,'#7c5437');rect(245,sy+3,472,1,'#bb8c5d')}
+}
+// 흙길 양쪽의 바퀴 자국: 작은 점선이 바닥을 따라 움직입니다.
+for(const xx of [263,690]){
+ rect(xx,0,14,600,'#845b39');
+ for(let d=Math.floor(visibleStart/4)*4;d<=visibleEnd;d+=4){const yy=toY(d);if(yy>=-12&&yy<=610){rect(xx+3,yy,8,Math.max(2,overview?2:8),'#63452f')}}
+}
+// 벽의 벽돌 이음새, 기둥, 방향 화살표를 세계 좌표에 고정합니다.
+for(const wx of [211,720]){
+ rect(wx,0,25,600,'#52657c');rect(wx,0,5,600,'#d0d6dc');rect(wx+20,0,4,600,'#35465d');
+ const wallStep=overview?175:6;
+ for(let d=Math.floor(visibleStart/wallStep)*wallStep;d<=visibleEnd;d+=wallStep){
+  const yy=toY(d);if(yy<-24||yy>625)continue;
+  rect(wx+4,yy,18,3,'#34455b');
+  if(Math.floor(d/wallStep)%2===0){rect(wx+11,yy-17,2,16,'#40536b');text('▲',wx+12,yy-5,17,'#ffe17d')}
+  else rect(wx+7,yy-14,2,12,'#8293a5');
+ }
+}
+const q=QUESTIONS[questionIndex%QUESTIONS.length];
+if(questionMode==='choose'||questionMode==='reveal'){
+ for(let row=0;row<tileGrid.length;row++){
+  const top=toY((row+1)*TILE_LENGTH),bottom=toY(row*TILE_LENGTH);
+  if(bottom<0||top>600)continue;
+  for(let lane=0;lane<4;lane++){
+   const xx=240+lane*120,number=tileGrid[row][lane];
+   const gone=questionMode==='reveal'&&number!==q.correct+1;
+   const yy=Math.max(0,top),hh=Math.min(600,bottom)-yy;
+   if(hh<=0)continue;
+   rect(xx+2,yy,116,hh,gone?'#25354c':CHOICE_COLORS[number]);
+   if(!gone){rect(xx+2,yy,116,3,'#ffffff66');rect(xx+2,yy,3,hh,'#ffffff55');if(bottom-top>19)text(String(number),xx+60,(top+bottom)/2+8,23,'#ffffff')}
+   else if(bottom-top>19)text('▼',xx+60,(top+bottom)/2+7,18,'#596d88');
+  }
+ }
+}else{for(let lane=1;lane<4;lane++)for(let y=0;y<600;y+=35)rect(240+lane*120-2,y,4,19,'#d3aa78')}
+const finishY=toY(FINISH);
+if(finishY>-25&&finishY<620){for(let x=240;x<720;x+=24)for(let k=0;k<2;k++)rect(x,finishY+k*14,24,14,(Math.floor(x/24)+k)%2?'#f8f8e8':'#243247');text('FINISH',480,finishY-12,21,'#fff')}
+const startY=toY(0);if(startY>0&&startY<600)text('START',480,startY+32,20,'#fff1ab');
+// 먼저 먼 주자를 그려 겹침이 자연스럽게 보이도록 합니다.
+for(const r of [...runners].sort((a,b)=>b.x-a.x)){
+ const sx=laneX(Math.max(0,Math.min(3,r.lane))),sy=toY(r.x);
+ if(sy>-40&&sy<640){if(r.teleportFlash>0){const oldY=toY(r.fallOrigin);ctx.save();ctx.setLineDash([6,5]);ctx.strokeStyle='#fff07b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(sx,oldY);ctx.lineTo(sx,sy);ctx.stroke();ctx.restore();text('−10칸',sx,Math.min(530,Math.max(40,(oldY+sy)/2)),15,'#fff07b')}drawRunner(r,sx,sy,overview?.72:1);if(r.cheer)text('응원!',sx,sy-45,12,'#fff2a0')}
+}
+drawMiniMap();rect(240,555,480,16,'#34435b');const prog=Math.min(1,(overview?Math.max(0,...runners.map(r=>r.x)):player.x)/FINISH);rect(240,555,480*prog,16,'#f9ce65');text('결승까지 '+Math.max(0,Math.ceil(FINISH-(overview?Math.max(0,...runners.map(r=>r.x)):player.x)))+' 블록',480,587,15,'#fff');
+if(phase==='lobby')text('대기실 · '+(roomCode?'방 코드 '+roomCode+' · ':'')+'자동 시작 '+Math.ceil(lobby)+'초',480,76,25,'#fff');
+if(phase==='countdown')text(String(Math.max(1,3-Math.floor(elapsed))),480,250,55,'#fff0a2');
+if(paused)text('일시정지',480,295,45,'#fff');if(player&&player.stun>0&&role==='student')text(player.stun>1?'추락 중 · 이동 불가 '+Math.ceil(player.stun)+'초':'어지러움 · 이동 불가 '+Math.ceil(player.stun)+'초',480,415,22,'#fff0a2');
+$('status').textContent=phase==='lobby'?'대기실':phase==='countdown'?'출발 준비':phase==='race'?'레이스 진행':phase==='ended'?'경기 종료':phase;
+$('timer').textContent=phase==='race'?`${Math.floor(elapsed/60).toString().padStart(2,'0')}:${Math.floor(elapsed%60).toString().padStart(2,'0')}`:'00:00';
+$('speed').textContent=`속도 ${player.boost.toFixed(1)}`;
+$('score').textContent=`정답 ${player.correct} · 오답 ${player.wrong}`;
+if(questionMode==='choose')$('qtime').textContent=`정답 발표까지 ${Math.max(0,Math.ceil(10-(elapsed-questionStart)))}초`;
+}
+function frame(t){const dt=Math.min(.05,(t-last)/1000||0);last=t;update(dt);draw();if(music)playMusic(dt);requestAnimationFrame(frame)}requestAnimationFrame(frame);
+window.addEventListener('keydown',e=>{if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','Space'].includes(e.code))e.preventDefault();keys[e.code]=true});window.addEventListener('keyup',e=>keys[e.code]=false);document.querySelectorAll('[data-key]').forEach(b=>{const k=b.dataset.key;b.addEventListener('pointerdown',e=>{e.preventDefault();keys[k]=true;b.setPointerCapture(e.pointerId)});for(const ev of ['pointerup','pointercancel','lostpointercapture'])b.addEventListener(ev,()=>keys[k]=false)});
+function toggleMusic(){music=!music;$('musicBtn').textContent=music?'♫ 음악 끄기':'♫ 음악 켜기';if(music){audio=audio||new(window.AudioContext||window.webkitAudioContext)();audio.resume()}}function playMusic(dt){if(!audio)return;musicTick-=dt;if(musicTick>0)return;musicTick=.24;const notes=[261.63,329.63,392,523.25,392,329.63,293.66,392];playMusic.n=(playMusic.n||0)+1;const osc=audio.createOscillator(),gain=audio.createGain();osc.type='square';osc.frequency.value=notes[playMusic.n%notes.length];gain.gain.setValueAtTime(.035,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.001,audio.currentTime+.17);osc.connect(gain).connect(audio.destination);osc.start();osc.stop(audio.currentTime+.18)}
+
+let online=false,socket=null,myId=null,roomCode='',lastSend=0,serverClock=0,lastServerState=null;
+function teacherResults(){sendCommand('results');showResults()}
+function sendCommand(action){if(socket?.readyState===1)socket.send(JSON.stringify({type:'command',action}))}
+function connectMultiplayer(){
+ role=$('role').value;const code=$('roomCode').value.trim();if(role==='student'&&!/^\d{6}$/.test(code)){alert('교사에게 받은 6자리 방 코드를 입력하세요.');return}
+ socket=new WebSocket((location.protocol==='https:'?'wss://':'ws://')+location.host);
+ socket.onopen=()=>socket.send(JSON.stringify({type:'join',name:$('name').value,code,teacher:role==='teacher'}));
+ socket.onerror=()=>alert('서버 연결에 실패했습니다. 서버 주소로 접속했는지 확인하세요.');
+ socket.onmessage=e=>{let m;try{m=JSON.parse(e.data)}catch{return}
+ if(m.type==='error'){alert(m.message);return}if(m.type==='kicked'){alert('교사가 방을 비웠습니다.');location.reload();return}
+ if(m.type==='results'){if(role==='student')showResults();return}
+ if(m.type==='joined'){online=true;myId=m.id;roomCode=m.code;$('teacherControls').style.display=role==='teacher'?'inline':'none';$('overlay').style.display='none';$('question').style.display='none';toast('방 코드 '+roomCode+' · 접속 성공');}
+ if(m.type==='joined'||m.type==='state')applyServerState(m);
+ };
+}
+function applyServerState(s){if(!online)return;
+ const oldPhase=phase,oldMode=questionMode,oldIndex=questionIndex;
+ if((s.phase==='countdown'&&oldPhase!=='countdown')||(s.phase==='lobby'&&oldPhase!=='lobby')){resultsShown=false;$('overlay').style.display='none';$('question').style.display='none';}
+ phase=s.phase;paused=s.paused;elapsed=s.elapsed;lobby=s.lobby;questionIndex=s.questionIndex;questionMode=s.questionMode;questionStart=s.questionStart;tileGrid=s.tiles;serverClock=performance.now();lastServerState=s;
+ const byId=new Map(runners.map(r=>[r.id,r]));runners=s.players.filter(p=>p.id!==s.host).map((p,i)=>{
+ const old=byId.get(p.id)||{id:p.id,name:p.name,color:['#ffcb68','#f780a4','#78d8ee','#a4ee8a','#c5a3ff','#f2a06c'][i%6],human:p.id===myId};
+ if(p.id===myId&&oldPhase==='race'&&phase==='race'&&s.elapsed>=elapsed-.5)return old;
+ return Object.assign(old,p,{human:p.id===myId});
+ });
+ if(role==='teacher')player=runners[0]||{x:0,lane:1,boost:1,correct:0,wrong:0,stun:0};else player=runners.find(r=>r.id===myId)||player;
+ if(phase==='race'&&oldPhase!=='race')toast('레이스 시작!');
+ if(questionMode==='choose'&&(oldMode!=='choose'||oldIndex!==questionIndex)){const q=QUESTIONS[questionIndex%QUESTIONS.length];$('qtext').textContent=`문제 ${questionIndex+1}. ${q.q}`;$('answers').innerHTML=q.a.map((v,i)=>`<span>${i+1} ${escapeHtml(v)}</span>`).join('');drawQuestionDiagram(q.diagram);$('question').style.display='block';if(player)player.judged=false;}
+ if(questionMode==='reveal'&&oldMode!=='reveal'){$('qtime').textContent=`정답: ${QUESTIONS[questionIndex%QUESTIONS.length].correct+1}번`;if(role==='student'&&player){player.judged=false;if(player.jump<=0){if(tileNumber(player)===QUESTIONS[questionIndex%QUESTIONS.length].correct+1)markCorrect(player);else markWrong(player)}}}
+ if(questionMode==='restore'||questionMode==='none')$('question').style.display='none';
+ if(phase==='ended'&&oldPhase!=='ended')showResults();
+}
+function updateOnline(dt){if(!lastServerState)return;
+ if(phase==='lobby')lobby=Math.max(0,lobby-dt);
+ if(phase==='countdown'&&!paused)elapsed+=dt;
+ if(phase!=='race'||paused)return;
+ elapsed+=dt;
+ if(questionMode==='choose')$('qtime').textContent=`정답 발표까지 ${Math.max(0,Math.ceil(10-(elapsed-questionStart)))}초`;
+ if(role!=='student'||!player||player.finish!==null)return;
+ const r=player;
+ if(r.stun>0){const before=r.stun;r.stun=Math.max(0,r.stun-dt);r.fall=Math.max(0,r.stun-1);if(before>1&&r.stun<=1){r.x=r.respawnX;r.lane=r.respawnLane;r.teleportFlash=1.5}if(before>0&&r.stun===0)r.jump=.65;}
+ else{r.teleportFlash=Math.max(0,(r.teleportFlash||0)-dt);
+ const dx=(keys.ArrowUp||keys.KeyW?1:0)-(keys.ArrowDown||keys.KeyS?1:0),dl=(keys.ArrowRight||keys.KeyD?1:0)-(keys.ArrowLeft||keys.KeyA?1:0);
+ r.x=Math.max(0,r.x+dx*dt*8*r.boost*(r.jump>0?1.55:1));r.lane=Math.max(0,Math.min(3,r.lane+dl*dt*3.5));if((keys.Space||keys[' '])&&r.jump<=0)r.jump=.95;r.jump=Math.max(0,r.jump-dt);
+ if(questionMode==='reveal'&&r.jump<=0){if(tileNumber(r)!==QUESTIONS[questionIndex%QUESTIONS.length].correct+1)markWrong(r);else if(!r.judged)markCorrect(r)}
+ if(r.x>=FINISH){r.x=FINISH;r.finish=elapsed;r.cheer=true;showResults()}
+ }
+ lastSend+=dt;if(lastSend>=.09&&socket?.readyState===1){lastSend=0;socket.send(JSON.stringify({type:'move',data:{x:r.x,lane:r.lane,correct:r.correct,wrong:r.wrong,boost:r.boost,finish:r.finish,stun:r.stun,jump:r.jump,cheer:r.cheer,fallOrigin:r.fallOrigin,respawnX:r.respawnX,respawnLane:r.respawnLane,teleportFlash:r.teleportFlash,judged:r.judged}}))}
+}
+</script></body></html>
